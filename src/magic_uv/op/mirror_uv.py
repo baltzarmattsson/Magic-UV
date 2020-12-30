@@ -191,7 +191,7 @@ class MUV_OT_MirrorUV(bpy.types.Operator):
         # Move to local to world.
         transformed = {}
         for v in bm.verts:
-            transformed[v] = world_orientation_mat @ v.co
+            transformed[v] = compat.matmul(world_orientation_mat, v.co)
 
         return transformed
 
@@ -209,7 +209,7 @@ class MUV_OT_MirrorUV(bpy.types.Operator):
         # Move to local to global.
         transformed = {}
         for v in bm.verts:
-            transformed[v] = rotation_mat @ v.co
+            transformed[v] = compat.matmul(rotation_mat, v.co)
             transformed[v] -= center_location
 
         return transformed
