@@ -30,7 +30,8 @@ import bmesh
 from bpy.props import (
     FloatProperty,
     FloatVectorProperty,
-    BoolProperty
+    BoolProperty,
+    EnumProperty
 )
 from mathutils import Vector
 
@@ -70,7 +71,8 @@ def _get_uv_layer(ops_obj, bm, assign_uvmap):
     return uv_layer
 
 
-def _apply_box_map(bm, uv_layer, size, offset, rotation, tex_aspect):
+def _apply_box_map(bm, uv_layer, size, offset, rotation,
+                   tex_aspect, force_axis):
     scale = 1.0 / size
 
     sx = 1.0 * scale
@@ -95,36 +97,108 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation, tex_aspect):
             y = co.y * sy
             z = co.z * sz
 
-            # X-plane
-            if abs(n[0]) >= abs(n[1]) and abs(n[0]) >= abs(n[2]):
-                if n[0] >= 0.0:
-                    u = (y - ofy) * cos(rx) + (z - ofz) * sin(rx)
-                    v = -(y * aspect - ofy) * sin(rx) + \
-                        (z * aspect - ofz) * cos(rx)
-                else:
-                    u = -(y - ofy) * cos(rx) + (z - ofz) * sin(rx)
-                    v = (y * aspect - ofy) * sin(rx) + \
-                        (z * aspect - ofz) * cos(rx)
-            # Y-plane
-            elif abs(n[1]) >= abs(n[0]) and abs(n[1]) >= abs(n[2]):
-                if n[1] >= 0.0:
-                    u = -(x - ofx) * cos(ry) + (z - ofz) * sin(ry)
-                    v = (x * aspect - ofx) * sin(ry) + \
-                        (z * aspect - ofz) * cos(ry)
-                else:
-                    u = (x - ofx) * cos(ry) + (z - ofz) * sin(ry)
-                    v = -(x * aspect - ofx) * sin(ry) + \
-                        (z * aspect - ofz) * cos(ry)
-            # Z-plane
-            else:
-                if n[2] >= 0.0:
-                    u = (x - ofx) * cos(rz) + (y - ofy) * sin(rz)
-                    v = -(x * aspect - ofx) * sin(rz) + \
-                        (y * aspect - ofy) * cos(rz)
-                else:
-                    u = -(x - ofx) * cos(rz) - (y + ofy) * sin(rz)
-                    v = -(x * aspect + ofx) * sin(rz) + \
-                        (y * aspect - ofy) * cos(rz)
+            transformed = False
+            if force_axis == 'X':
+                # Use Y-plane
+                if abs(n[1]) < abs(n[0]) and abs(n[1]) >= abs(n[2]):
+                    if n[1] >= 0.0:
+                        u = -(x - ofx) * cos(ry) + (z - ofz) * sin(ry)
+                        v = (x * aspect - ofx) * sin(ry) + \
+                            (z * aspect - ofz) * cos(ry)
+                    else:
+                        u = (x - ofx) * cos(ry) + (z - ofz) * sin(ry)
+                        v = -(x * aspect - ofx) * sin(ry) + \
+                            (z * aspect - ofz) * cos(ry)
+                    transformed = True
+                # Use Z-plane
+                elif abs(n[2]) < abs(n[0]) and abs(n[2]) >= abs(n[1]):
+                    if n[2] >= 0.0:
+                        u = (x - ofx) * cos(rz) + (y - ofy) * sin(rz)
+                        v = -(x * aspect - ofx) * sin(rz) + \
+                            (y * aspect - ofy) * cos(rz)
+                    else:
+                        u = -(x - ofx) * cos(rz) - (y + ofy) * sin(rz)
+                        v = -(x * aspect + ofx) * sin(rz) + \
+                            (y * aspect - ofy) * cos(rz)
+                    transformed = True
+            elif force_axis == 'Y':
+                # Use X-plane
+                if abs(n[0]) < abs(n[1]) and abs(n[0]) >= abs(n[2]):
+                    if n[0] >= 0.0:
+                        u = (y - ofy) * cos(rx) + (z - ofz) * sin(rx)
+                        v = -(y * aspect - ofy) * sin(rx) + \
+                            (z * aspect - ofz) * cos(rx)
+                    else:
+                        u = -(y - ofy) * cos(rx) + (z - ofz) * sin(rx)
+                        v = (y * aspect - ofy) * sin(rx) + \
+                            (z * aspect - ofz) * cos(rx)
+                    transformed = True
+                # Use Z-plane
+                elif abs(n[2]) >= abs(n[0]) and abs(n[2]) < abs(n[1]):
+                    if n[2] >= 0.0:
+                        u = (x - ofx) * cos(rz) + (y - ofy) * sin(rz)
+                        v = -(x * aspect - ofx) * sin(rz) + \
+                            (y * aspect - ofy) * cos(rz)
+                    else:
+                        u = -(x - ofx) * cos(rz) - (y + ofy) * sin(rz)
+                        v = -(x * aspect + ofx) * sin(rz) + \
+                            (y * aspect - ofy) * cos(rz)
+                    transformed = True
+            elif force_axis == 'Z':
+                # Use X-plane
+                if abs(n[0]) >= abs(n[1]) and abs(n[0]) < abs(n[2]):
+                    if n[0] >= 0.0:
+                        u = (y - ofy) * cos(rx) + (z - ofz) * sin(rx)
+                        v = -(y * aspect - ofy) * sin(rx) + \
+                            (z * aspect - ofz) * cos(rx)
+                    else:
+                        u = -(y - ofy) * cos(rx) + (z - ofz) * sin(rx)
+                        v = (y * aspect - ofy) * sin(rx) + \
+                            (z * aspect - ofz) * cos(rx)
+                    transformed = True
+                # Use Y-plane
+                elif abs(n[1]) >= abs(n[0]) and abs(n[1]) < abs(n[2]):
+                    if n[1] >= 0.0:
+                        u = -(x - ofx) * cos(ry) + (z - ofz) * sin(ry)
+                        v = (x * aspect - ofx) * sin(ry) + \
+                            (z * aspect - ofz) * cos(ry)
+                    else:
+                        u = (x - ofx) * cos(ry) + (z - ofz) * sin(ry)
+                        v = -(x * aspect - ofx) * sin(ry) + \
+                            (z * aspect - ofz) * cos(ry)
+                    transformed = True
+
+            if not transformed:
+                # X-plane
+                if abs(n[0]) >= abs(n[1]) and abs(n[0]) >= abs(n[2]):
+                    if n[0] >= 0.0:
+                        u = (y - ofy) * cos(rx) + (z - ofz) * sin(rx)
+                        v = -(y * aspect - ofy) * sin(rx) + \
+                            (z * aspect - ofz) * cos(rx)
+                    else:
+                        u = -(y - ofy) * cos(rx) + (z - ofz) * sin(rx)
+                        v = (y * aspect - ofy) * sin(rx) + \
+                            (z * aspect - ofz) * cos(rx)
+                # Y-plane
+                elif abs(n[1]) >= abs(n[0]) and abs(n[1]) >= abs(n[2]):
+                    if n[1] >= 0.0:
+                        u = -(x - ofx) * cos(ry) + (z - ofz) * sin(ry)
+                        v = (x * aspect - ofx) * sin(ry) + \
+                            (z * aspect - ofz) * cos(ry)
+                    else:
+                        u = (x - ofx) * cos(ry) + (z - ofz) * sin(ry)
+                        v = -(x * aspect - ofx) * sin(ry) + \
+                            (z * aspect - ofz) * cos(ry)
+                # Z-plane
+                elif abs(n[2]) >= abs(n[0]) and abs(n[2]) >= abs(n[1]):
+                    if n[2] >= 0.0:
+                        u = (x - ofx) * cos(rz) + (y - ofy) * sin(rz)
+                        v = -(x * aspect - ofx) * sin(rz) + \
+                            (y * aspect - ofy) * cos(rz)
+                    else:
+                        u = -(x - ofx) * cos(rz) - (y + ofy) * sin(rz)
+                        v = -(x * aspect + ofx) * sin(rz) + \
+                            (y * aspect - ofy) * cos(rz)
 
             l[uv_layer].uv = Vector((u, v))
 
@@ -215,6 +289,17 @@ class MUV_OT_UVW_BoxMap(bpy.types.Operator):
         description="Assign UVMap when no UVmaps are available",
         default=True
     )
+    force_axis = EnumProperty(
+        name="Force Axis",
+        description="Axis to force the mapping",
+        items=[
+            ('NONE', "None", "None"),
+            ('X', "X", "Axis X"),
+            ('Y', "Y", "Axis Y"),
+            ('Z', "Z", "Axis Z")
+        ],
+        default='NONE'
+    )
 
     @classmethod
     def poll(cls, context):
@@ -237,7 +322,7 @@ class MUV_OT_UVW_BoxMap(bpy.types.Operator):
                 return {'CANCELLED'}
 
             _apply_box_map(bm, uv_layer, self.size, self.offset, self.rotation,
-                           self.tex_aspect)
+                           self.tex_aspect, self.force_axis)
             bmesh.update_edit_mesh(obj.data)
 
         return {'FINISHED'}
