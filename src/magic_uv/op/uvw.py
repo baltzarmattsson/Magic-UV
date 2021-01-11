@@ -72,7 +72,7 @@ def _get_uv_layer(ops_obj, bm, assign_uvmap):
 
 
 def _apply_box_map(bm, uv_layer, size, offset, rotation,
-                   tex_aspect, force_axis):
+                   tex_aspect, force_axis, force_aspect_correction):
     scale = 1.0 / size
 
     sx = 1.0 * scale
@@ -84,7 +84,6 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation,
     rx = rotation[0] * pi / 180.0
     ry = rotation[1] * pi / 180.0
     rz = rotation[2] * pi / 180.0
-    aspect = tex_aspect
 
     sel_faces = [f for f in bm.faces if f.select]
 
@@ -96,11 +95,13 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation,
             x = co.x * sx
             y = co.y * sy
             z = co.z * sz
+            aspect = tex_aspect
 
             transformed = False
             if force_axis == 'X':
                 # Use Y-plane
                 if abs(n[1]) < abs(n[0]) and abs(n[1]) >= abs(n[2]):
+                    aspect *= force_aspect_correction
                     if n[1] >= 0.0:
                         u = -(x - ofx) * cos(ry) + (z - ofz) * sin(ry)
                         v = (x * aspect - ofx) * sin(ry) + \
@@ -112,6 +113,7 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation,
                     transformed = True
                 # Use Z-plane
                 elif abs(n[2]) < abs(n[0]) and abs(n[2]) >= abs(n[1]):
+                    aspect *= force_aspect_correction
                     if n[2] >= 0.0:
                         u = (x - ofx) * cos(rz) + (y - ofy) * sin(rz)
                         v = -(x * aspect - ofx) * sin(rz) + \
@@ -124,6 +126,7 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation,
             elif force_axis == 'Y':
                 # Use X-plane
                 if abs(n[0]) < abs(n[1]) and abs(n[0]) >= abs(n[2]):
+                    aspect *= force_aspect_correction
                     if n[0] >= 0.0:
                         u = (y - ofy) * cos(rx) + (z - ofz) * sin(rx)
                         v = -(y * aspect - ofy) * sin(rx) + \
@@ -135,6 +138,7 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation,
                     transformed = True
                 # Use Z-plane
                 elif abs(n[2]) >= abs(n[0]) and abs(n[2]) < abs(n[1]):
+                    aspect *= force_aspect_correction
                     if n[2] >= 0.0:
                         u = (x - ofx) * cos(rz) + (y - ofy) * sin(rz)
                         v = -(x * aspect - ofx) * sin(rz) + \
@@ -147,6 +151,7 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation,
             elif force_axis == 'Z':
                 # Use X-plane
                 if abs(n[0]) >= abs(n[1]) and abs(n[0]) < abs(n[2]):
+                    aspect *= force_aspect_correction
                     if n[0] >= 0.0:
                         u = (y - ofy) * cos(rx) + (z - ofz) * sin(rx)
                         v = -(y * aspect - ofy) * sin(rx) + \
@@ -158,6 +163,7 @@ def _apply_box_map(bm, uv_layer, size, offset, rotation,
                     transformed = True
                 # Use Y-plane
                 elif abs(n[1]) >= abs(n[0]) and abs(n[1]) < abs(n[2]):
+                    aspect *= force_aspect_correction
                     if n[1] >= 0.0:
                         u = -(x - ofx) * cos(ry) + (z - ofz) * sin(ry)
                         v = (x * aspect - ofx) * sin(ry) + \
@@ -300,6 +306,12 @@ class MUV_OT_UVW_BoxMap(bpy.types.Operator):
         ],
         default='NONE'
     )
+    force_axis_tex_aspect_correction = FloatProperty(
+        name="Texture Aspect Correction (Force Axis)",
+        description="Texture Aspect correction for the faces mapped forcibly",
+        default=3.14,
+        precision=4
+    )
 
     @classmethod
     def poll(cls, context):
@@ -322,7 +334,8 @@ class MUV_OT_UVW_BoxMap(bpy.types.Operator):
                 return {'CANCELLED'}
 
             _apply_box_map(bm, uv_layer, self.size, self.offset, self.rotation,
-                           self.tex_aspect, self.force_axis)
+                           self.tex_aspect, self.force_axis,
+                           self.force_axis_tex_aspect_correction)
             bmesh.update_edit_mesh(obj.data)
 
         return {'FINISHED'}
